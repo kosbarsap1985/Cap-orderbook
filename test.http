@@ -1,0 +1,21 @@
+POST http://localhost:4004/technical/BookOrders HTTP/1.1
+Content-Type: application/json;IEEE754Compatible=true
+Authorization: Basic dGVzdEB0ZXN0LmNvbToxMjM0
+
+{
+      "bookUUID": "32ca5208-698d-4d7a-9db9-003ef21b6222",
+      "bookOrderID": 1,
+      "bookName": "GOV.NO",
+      "authorUUID": "32ca5208-698d-4d7a-1524-003ef21b6347",
+      "authorfirstName": "Richard",
+      "authorlastName": "Carpenter",
+      "CurrencyCode_code": "USD",
+      "LocalCurrencyCode_code": "BYN",
+      "price": 30,
+      "quantity": 2,
+      "status_ID": "1",
+      "totalPrice": 60,
+      "totalLocal": null
+}
+
+

@@ -1,0 +1,135 @@
+_schema-version: '3.1'
+ID: cap-book-orders-cap
+description: A simple CAP project.
+version: 1.0.0
+modules:
+  - name: cap-book-orders-cap-srv
+    type: nodejs
+    path: gen/srv
+    requires:
+      - name: cap-book-orders-cap-db
+      - name: cap-book-orders-cap-auth
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: '${default-url}'
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm-ci
+  - name: cap-book-orders-cap-db-deployer
+    type: hdb
+    path: gen/db
+    requires:
+      - name: cap-book-orders-cap-db
+    parameters:
+      buildpack: nodejs_buildpack
+  - name: cap-book-orders-cap-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: cap-book-orders-cap-destination-service
+        parameters:
+          content-target: true
+      - name: cap-book-orders-cap_html_repo_host
+        parameters:
+          service-key:
+            name: cap-book-orders-cap_html_repo_host-key
+      - name: cap-book-orders-cap-auth
+        parameters:
+          service-key:
+            name: cap-book-orders-cap-auth-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: Capbookorders_cap_book_orders_cap_html_repo_host
+              ServiceInstanceName: cap-book-orders-cap-html5-app-host-service
+              ServiceKeyName: cap-book-orders-cap_html_repo_host-key
+              sap.cloud.service: Capbookorders
+            - Authentication: OAuth2UserTokenExchange
+              Name: Capbookorders_cap_book_orders_cap_auth
+              ServiceInstanceName: cap-book-orders-cap-xsuaa-service
+              ServiceKeyName: cap-book-orders-cap-auth-key
+              sap.cloud.service: Capbookorders
+          existing_destinations_policy: ignore
+    build-parameters:
+      no-source: true
+  - name: cap-book-orders-cap-app-content
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: cap-book-orders-cap_html_repo_host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources
+      requires:
+        - artifacts:
+          - orderbookui.zip
+          name: orderbookui
+          target-path: resources/
+  - name: orderbookui
+    type: html5
+    path: app/orderbookui
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+      supported-platforms: []
+resources:
+  - name: cap-book-orders-cap-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+  - name: cap-book-orders-cap-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      path: ./xs-security.json
+      service: xsuaa
+      service-name: cap-book-orders-cap-xsuaa-service
+      service-plan: application
+
+  - name: cap-book-orders-cap-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      config:
+        HTML5Runtime_enabled: true
+        init_data:
+          instance:
+            destinations:
+              - Authentication: NoAuthentication
+                Name: ui5
+                ProxyType: Internet
+                Type: HTTP
+                URL: 'https://ui5.sap.com'
+              - Authentication: NoAuthentication
+                HTML5.DynamicDestination: true
+                HTML5.ForwardAuthToken: true
+                Name: cap-book-orders-cap-srv-api
+                ProxyType: Internet
+                Type: HTTP
+                URL: ~{srv-api/srv-url}
+                existing_destinations_policy: update
+        version: 1.0.0
+      service: destination
+      service-name: cap-book-orders-cap-destination-service
+      service-plan: lite
+    requires:
+    - name: srv-api  
+  - name: cap-book-orders-cap_html_repo_host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-name: cap-book-orders-cap-html5-app-host-service
+      service-plan: app-host
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npx -p @sap/cds-dk cds build --production
